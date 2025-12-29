@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Prompt Helper Pro",
+  "version": "2.0.0",
+  "description": "Efficiently manage and copy your daily prompts. Works on Chrome and Firefox.",
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open Prompt Helper"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
