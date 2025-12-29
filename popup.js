@@ -1,26 +1,44 @@
-// 1. 這裡定義預設的 Prompt
-const DEFAULT_PROMPTS = [
-  { id: 'def_1', title: '冷郵件開頭', content: 'Hi [Name], 我注意到貴公司正在招募...', type: 'default' },
-  { id: 'def_2', title: 'IG 爆款標題', content: '請給我 5 個關於 [主題] 的爭議性標題...', type: 'default' },
-  { id: 'def_3', title: 'React 優化', content: '你是 React 專家，請優化這段代碼：', type: 'default' }
-];
+let editingId = null;
+
+function migrateSyncToLocalOnce(callback) {
+  chrome.storage.local.get(['migrationDone', 'myPrompts'], (localState) => {
+    const done = !!localState.migrationDone;
+    const localHasData = Array.isArray(localState.myPrompts) && localState.myPrompts.length > 0;
+    if (done || localHasData) {
+      if (callback) callback();
+      return;
+    }
+    chrome.storage.sync.get(['myPrompts'], (syncState) => {
+      const syncData = Array.isArray(syncState.myPrompts) ? syncState.myPrompts : [];
+      if (syncData.length > 0) {
+        chrome.storage.local.set({ myPrompts: syncData, migrationDone: true }, () => {
+          if (callback) callback();
+        });
+      } else {
+        chrome.storage.local.set({ migrationDone: true }, () => {
+          if (callback) callback();
+        });
+      }
+    });
+  });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadPrompts();
+  migrateSyncToLocalOnce(() => {
+    loadPrompts();
+  });
   document.getElementById('add-btn').addEventListener('click', addCustomPrompt);
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  if (cancelBtn) cancelBtn.addEventListener('click', cancelEdit);
 });
 
 // 載入資料
 function loadPrompts() {
-  // 使用 chrome.storage 讀取資料
-  chrome.storage.sync.get(['myPrompts'], (result) => {
+  // 使用 chrome.storage.local 讀取資料
+  chrome.storage.local.get(['myPrompts'], (result) => {
     let prompts = result.myPrompts;
 
-    // 如果是第一次安裝（沒有資料），載入預設值
-    if (!prompts) {
-      prompts = DEFAULT_PROMPTS;
-      chrome.storage.sync.set({ myPrompts: prompts });
-    }
+    if (!Array.isArray(prompts)) prompts = [];
     renderList(prompts);
   });
 }
@@ -45,12 +63,14 @@ function renderList(prompts) {
         <span class="tag ${tagClass}">${tagName}</span>${p.title}
       </div>
       <div class="prompt-content">${p.content}</div>
+      <span class="edit-btn" data-id="${p.id}">✎</span>
       <span class="delete-btn" data-index="${index}">×</span>
     `;
 
     // 點擊複製
     item.addEventListener('click', (e) => {
       if (e.target.classList.contains('delete-btn')) return;
+      if (e.target.classList.contains('edit-btn')) return;
       copyToClipboard(p.content);
     });
 
@@ -58,6 +78,12 @@ function renderList(prompts) {
     item.querySelector('.delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       deletePrompt(index);
+    });
+
+    // 編輯按鈕
+    item.querySelector('.edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      startEdit(p);
     });
 
     list.appendChild(item);
@@ -76,16 +102,23 @@ function addCustomPrompt() {
     return;
   }
 
-  chrome.storage.sync.get(['myPrompts'], (result) => {
-    const prompts = result.myPrompts || DEFAULT_PROMPTS;
-    prompts.push({
+  // 如果目前在編輯狀態，改為保存編輯
+  if (editingId) {
+    saveEdit();
+    return;
+  }
+
+  chrome.storage.local.get(['myPrompts'], (result) => {
+    const prompts = Array.isArray(result.myPrompts) ? result.myPrompts : [];
+    const newItem = {
       id: Date.now().toString(),
       title: title,
       content: content,
       type: 'custom'
-    });
+    };
+    prompts.push(newItem);
 
-    chrome.storage.sync.set({ myPrompts: prompts }, () => {
+    chrome.storage.local.set({ myPrompts: prompts }, () => {
       titleInput.value = '';
       contentInput.value = '';
       loadPrompts();
@@ -97,13 +130,64 @@ function addCustomPrompt() {
 function deletePrompt(index) {
   if(!confirm('確定要刪除嗎？')) return;
 
-  chrome.storage.sync.get(['myPrompts'], (result) => {
+  chrome.storage.local.get(['myPrompts'], (result) => {
     const prompts = result.myPrompts;
     prompts.splice(index, 1);
     
-    chrome.storage.sync.set({ myPrompts: prompts }, () => {
+    chrome.storage.local.set({ myPrompts: prompts }, () => {
       loadPrompts();
     });
+  });
+}
+
+// 開始編輯
+function startEdit(p) {
+  editingId = p.id;
+  const titleInput = document.getElementById('new-title');
+  const contentInput = document.getElementById('new-content');
+  const addBtn = document.getElementById('add-btn');
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  titleInput.value = p.title;
+  contentInput.value = p.content;
+  addBtn.textContent = '保存修改';
+  if (cancelBtn) cancelBtn.style.display = 'block';
+}
+
+// 取消編輯
+function cancelEdit() {
+  editingId = null;
+  const titleInput = document.getElementById('new-title');
+  const contentInput = document.getElementById('new-content');
+  const addBtn = document.getElementById('add-btn');
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  titleInput.value = '';
+  contentInput.value = '';
+  addBtn.textContent = '新增 Prompt';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
+// 保存編輯
+function saveEdit() {
+  const titleInput = document.getElementById('new-title');
+  const contentInput = document.getElementById('new-content');
+  const newTitle = titleInput.value.trim();
+  const newContent = contentInput.value.trim();
+  if (!newTitle || !newContent) {
+    alert('請輸入標題和內容');
+    return;
+  }
+  chrome.storage.local.get(['myPrompts'], (result) => {
+    const prompts = Array.isArray(result.myPrompts) ? result.myPrompts : [];
+    const idx = prompts.findIndex(x => x.id === editingId);
+    if (idx !== -1) {
+      prompts[idx] = { ...prompts[idx], title: newTitle, content: newContent };
+      chrome.storage.local.set({ myPrompts: prompts }, () => {
+        cancelEdit();
+        loadPrompts();
+      });
+    } else {
+      alert('找不到要編輯的項目');
+    }
   });
 }
 
