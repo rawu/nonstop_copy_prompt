@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { 
+      width: 320px; 
+      font-family: 'Segoe UI', sans-serif; 
+      padding: 12px; 
+      background-color: #f8f9fa; 
+      margin: 0; 
+    }
+    
+    /* 標題 */
+    h1 { 
+      font-size: 16px; 
+      margin: 0 0 12px 0; 
+      color: #333; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    /* 列表區域 */
+    #prompt-list { 
+      max-height: 300px; 
+      overflow-y: auto; 
+      margin-bottom: 15px; 
+    }
+
+    /* 單個 Prompt 卡片 */
+    .prompt-item { 
+      background: white; 
+      padding: 10px; 
+      border-radius: 6px; 
+      margin-bottom: 8px; 
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+      border: 1px solid #e5e7eb; 
+      cursor: pointer; 
+      transition: all 0.2s; 
+      position: relative; 
+    }
+    
+    .prompt-item:hover { 
+      border-color: #4f46e5; 
+      transform: translateY(-1px); 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    }
+
+    .prompt-title { 
+      font-weight: bold; 
+      font-size: 13px; 
+      color: #1f2937; 
+      margin-bottom: 4px; 
+      display: flex; 
+      align-items: center;
+    }
+
+    .prompt-content { 
+      font-size: 12px; 
+      color: #6b7280; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+    }
+
+    /* 刪除按鈕 */
+    .delete-btn { 
+      position: absolute; 
+      right: 8px; 
+      top: 8px; 
+      color: #ef4444; 
+      font-weight: bold;
+      cursor: pointer;
+      display: none; 
+      font-size: 16px;
+      line-height: 1;
+    }
+    .prompt-item:hover .delete-btn { display: block; }
+
+    /* 標籤 */
+    .tag { 
+      display: inline-block; 
+      padding: 2px 6px; 
+      border-radius: 4px; 
+      font-size: 10px; 
+      margin-right: 6px; 
+    }
+    .tag-default { background: #e0e7ff; color: #4338ca; } 
+    .tag-custom { background: #d1fae5; color: #065f46; } 
+
+    /* 輸入區 */
+    .add-section { 
+      border-top: 1px solid #e5e7eb; 
+      padding-top: 12px; 
+    }
+    
+    input, textarea { 
+      width: 100%; 
+      box-sizing: border-box; 
+      margin-bottom: 8px; 
+      border: 1px solid #d1d5db; 
+      border-radius: 4px; 
+      padding: 8px; 
+      font-size: 12px; 
+      font-family: inherit;
+    }
+    
+    button { 
+      width: 100%; 
+      background-color: #4f46e5; 
+      color: white; 
+      border: none; 
+      padding: 8px; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      font-size: 13px;
+    }
+    button:hover { background-color: #4338ca; }
+
+    /* 複製提示 (Toast) */
+    #toast { 
+      position: fixed; 
+      bottom: 20px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      background: rgba(31, 41, 55, 0.9); 
+      color: white; 
+      padding: 6px 12px; 
+      border-radius: 20px; 
+      font-size: 12px; 
+      display: none; 
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    Prompt 助手 
+    <span style="font-size:11px; color:#6b7280; font-weight:normal" id="count">0 個</span>
+  </h1>
+
+  <div id="prompt-list"></div>
+
+  <div class="add-section">
+    <input type="text" id="new-title" placeholder="標題 (例: 客服回覆)">
+    <textarea id="new-content" rows="2" placeholder="輸入內容..."></textarea>
+    <button id="add-btn">新增 Prompt</button>
+  </div>
+
+  <div id="toast">已複製!</div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
